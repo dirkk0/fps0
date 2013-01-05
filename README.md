@@ -8,4 +8,4 @@ Basically this demo merges the [Blender scene loader](http://mrdoob.github.com/t
 
 More info in a moment.
 
-[Screenshot](http://dirkk0.github.com/fps0/images/scene.png)
+![Screenshot](http://dirkk0.github.com/fps0/images/scene.png)
