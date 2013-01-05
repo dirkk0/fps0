@@ -33,8 +33,25 @@
       <section id="main_content" class="inner">
         <h3>A minimal First Person Scenery with a Blender level and dynamic content</h3>
 
-<p>(todo)
 
+<p>The goal of this project was to explore the options for a simple game with first person controls that runs completely in a browser. To achieve this I wanted to be able to</p>
+
+<ul>
+<li>load a 'level', i.e. a basic 3D model (in this case with Blender)</li>
+<li>create 'WASD' first person type of controls</li>
+<li>apply simple physics with collision detection to walk around and
+interact with objects</li>
+<li>add dynamic objects on runtime</li>
+</ul>
+
+<p>Luckily, all of the ground work was already done by someone else. :-)</p>
+
+<p>Basically this demo merges the <a href="http://mrdoob.github.com/three.js/examples/webgl_loader_scene_blender.html">Blender scene loader</a> of <a href="http://mrdoob.com/">mrdoobs</a> <a href="http://mrdoob.github.com/three.js/">ThreeJS library</a> and the <a href="https://github.com/schteppe/cannon.js">CannonJS</a> <a href="https://github.com/schteppe/cannon.js/blob/master/examples/threejs_fps.html">FPS example</a> by <a href="https://github.com/schteppe">schteppe</a>.</p>
+
+<p>I added the idea that the imported Blender geometry gets turned into a static model in the physics engine by finding the cubes and adding invisible physical collision boxes to their position.</p>
+
+<p>This worked surprisingly well and gives some sort of minimal FP(S) - completely running in the browser.
+The imported Blender model is turned into a static model by adding the boxes as static physic objects. This way this you can 'walk' on the objects of the Blender model (the grey objects in the screenshot).</p>
 
 <h3>Some information</h3>
 
