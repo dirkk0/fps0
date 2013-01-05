@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>three.js webgl - io - scene loader [blender]</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <style>
+            body {
+                background:#000;
+                color:#fff;
+                padding:0;
+                margin:0;
+                overflow:hidden;
+                font-family:georgia;
+                text-align:center;
+            }
+
+            #info {
+                position: absolute;
+                top: 0px; width: 100%;
+                padding: 5px;
+                font-family: Monospace;
+                font-size: 13px;
+                text-align: center;
+                z-index:100;
+            }
+
+            #progress {
+                color:red;
+                top:7em;
+                width: 100%;
+                font-size:3em;
+                font-variant:small-caps;
+                font-weight:bold;
+                position:absolute;
+                z-index:100;
+                text-align: center;
+                text-shadow: #000 0px 0px 10px;
+                display:none;
+            }
+
+            #start {
+                color:#fff;
+                text-shadow: #000 0px 0px 2px;
+                padding:0.1em 0.3em;
+                width:3em;
+                text-align: center;
+                display:none;
+            }
+
+            .shadow {
+                -moz-box-shadow: 0px 0px 5px #000;
+                -webkit-box-shadow: 0px 0px 5px #000;
+                box-shadow: 0px 0px 5px #000;
+            }
+
+            #progressbar {
+                text-align: center;
+                background: white;
+                width: 250px;
+                height: 10px;
+            }
+
+            #bar {
+                background:#d00;
+                width:50px;
+                height:10px;
+            }
+
+            .enabled {
+                color: lime!important;
+                cursor:pointer;
+            }
+
+            .enabled:hover {
+                text-shadow: #0f0 0px 0px 5px !important;
+            }
+
+            .disabled {
+                background:gray;
+                cursor:default;
+            }
+
+            a { color:red }
+            canvas { pointer-events:none; z-index:10; }
+
+            #scene_explorer {
+                background:transparent;
+                color:#fff;
+                width:200px;
+                position:absolute;
+                text-align:left;
+                top:0px;
+                z-index:200;
+                overflow:auto;
+            }
+
+            #section_exp {
+                background:rgba(0,0,50,0.5);
+                padding:0.5em 0;
+                display:none;
+            }
+
+            #scene_explorer h3 {
+                font-size:1em;
+                padding:0;
+                margin:0;
+                color:orange;
+            }
+
+            #scene_explorer a {
+                color:#555;
+                font-weight:bold;
+                text-decoration:none;
+                font-size:1.2em;
+                font-family:Monospace;
+            }
+            #scene_explorer a:hover {
+                background:#555;
+                color:rgba(0,0,50,1);
+            }
+
+            .part {
+                display:none;
+                padding:0 0 0.5em 2em;
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+            #blocker {
+
+                position: absolute;
+                display: none;
+
+                width: 100%;
+                height: 100%;
+                z-index:99;
+
+                background-color: rgba(0,0,0,0.5);
+
+            }
+
+            #instructions {
+
+                width: 100%;
+                height: 100%;
+
+                display: -webkit-box;
+                display: -moz-box;
+                display: box;
+
+                -webkit-box-orient: horizontal;
+                -moz-box-orient: horizontal;
+                box-orient: horizontal;
+
+                -webkit-box-pack: center;
+                -moz-box-pack: center;
+                box-pack: center;
+
+                -webkit-box-align: center;
+                -moz-box-align: center;
+                box-align: center;
+
+                color: #ffffff;
+                text-align: center;
+
+                cursor: pointer;
+
+            }
+
+
+
+
+
+
+
+
+
+
+        </style>
+    </head>
+
+    <body>
+        <div id="info">
+            <a href="http://threejs.org">three.js</a> - scene loader test [blender]
+        </div>
+
+        <div id="scene_explorer">
+            <a id="plus_exp" href="#">[+]</a>
+            <div id="section_exp"></div>
+        </div>
+
+        <div id="progress">
+            <span id="message">Loading ...</span>
+
+            <center>
+                <div id="progressbar" class="shadow"><div id="bar" class="shadow"></div></div>
+                <div id="start" class="disabled">Start</div>
+            </center>
+        </div>
+
+
+
+
+        <div id="blocker">
+
+            <div id="instructions">
+                <span style="font-size:40px">Click to play</span>
+                <br />
+                (W,A,S,D = Move, SPACE = Jump, MOUSE = Look, CLICK+HOLD = Shoot)
+            </div>
+
+        </div>
+
+
+        <!-- script src="https://raw.github.com/mrdoob/three.js/master/build/three.js"></script -->
+        <script src="js/three.js"></script>
+
+        <script src="js/detector.js"></script>
+        <script src="js/stats.min.js"></script>
+        <script src="js/PointerLockControls.js"></script>
+        <script src="js/cannon.js"></script>
+
+        <script>
+
+        var blocker = document.getElementById( 'blocker' );
+        var instructions = document.getElementById( 'instructions' );
+
+
+        function initBlenderScene(){
+
+            var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
+ 
+
+            if ( havePointerLock ) {
+
+                var element = document.body;
+
+                var pointerlockchange = function ( event ) {
+
+                    if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
+
+                        controls.enabled = true;
+
+                        blocker.style.display = 'none';
+                        console.log('mouse lock on')
+
+                    } else {
+
+                        controls.enabled = false;
+
+                        blocker.style.display = '-webkit-box';
+                        blocker.style.display = '-moz-box';
+                        blocker.style.display = 'box';
+
+                        instructions.style.display = '';
+                        console.log('mouse lock off')
+
+                    }
+
+                }
+
+                var pointerlockerror = function ( event ) {
+                    instructions.style.display = '';
+                }
+
+                // Hook pointer lock state change events
+                document.addEventListener( 'pointerlockchange', pointerlockchange, false );
+                document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
+                document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
+
+                document.addEventListener( 'pointerlockerror', pointerlockerror, false );
+                document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
+                document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
+
+                instructions.addEventListener( 'click', function ( event ) {
+                    instructions.style.display = 'none';
+
+                    // Ask the browser to lock the pointer
+                    element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+
+                    if ( /Firefox/i.test( navigator.userAgent ) ) {
+
+                        var fullscreenchange = function ( event ) {
+
+                            if ( document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element ) {
+
+                                document.removeEventListener( 'fullscreenchange', fullscreenchange );
+                                document.removeEventListener( 'mozfullscreenchange', fullscreenchange );
+
+                                element.requestPointerLock();
+                            }
+
+                        }
+
+                        document.addEventListener( 'fullscreenchange', fullscreenchange, false );
+                        document.addEventListener( 'mozfullscreenchange', fullscreenchange, false );
+
+                        element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
+
+                        element.requestFullscreen();
+
+                    } else {
+
+                        element.requestPointerLock();
+
+                    }
+
+                }, false );
+
+            } else {
+
+                instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
+
+            }
+        }
+
+
+
+            if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+            var SCREEN_WIDTH = window.innerWidth;
+            var SCREEN_HEIGHT = window.innerHeight;
+
+            var container,stats;
+
+            var camera, scene, loaded;
+            var renderer;
+
+            var currentScene;
+
+
+            var controls,time = Date.now();
+            var dt = 1/60;
+            var walls=[], balls=[], ballMeshes=[], boxes=[], boxMeshes=[], blenderBoxMeshes = [], blenderBoxes=[];
+
+            var mesh, zmesh, geometry;
+
+            var mouseX = 0, mouseY = 0;
+
+            var windowHalfX = window.innerWidth / 2;
+            var windowHalfY = window.innerHeight / 2;
+
+            document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+            initLoadScene();
+            animate();
+
+            function $( id ) {
+
+                return document.getElementById( id );
+
+            }
+
+            function handle_update( result, pieces ) {
+
+                refreshSceneView( result );
+                //renderer.initWebGLObjects( result.scene );
+
+                var m, material, count = 0;
+
+                for ( m in result.materials ) {
+
+                    material = result.materials[ m ];
+                    if ( ! ( material instanceof THREE.MeshFaceMaterial ) ) {
+
+                        if( !material.program ) {
+
+                            console.log(m);
+                            renderer.initMaterial( material, result.scene.__lights, result.scene.fog );
+
+                            count += 1;
+                            if( count > pieces ) {
+
+                                //console.log("xxxxxxxxx");
+                                break;
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+            function initLoadScene() {
+
+                container = document.createElement( 'div' );
+                document.body.appendChild( container );
+
+                var loadScene = createLoadScene();
+                currentScene = 0;
+
+
+                camera = loadScene.camera;
+                scene = loadScene.scene;
+
+                renderer = new THREE.WebGLRenderer();
+                // renderer = new THREE.AnaglyphEffect();
+
+
+                renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+                renderer.domElement.style.position = "relative";
+                container.appendChild( renderer.domElement );
+
+                stats = new Stats();
+                stats.domElement.style.position = 'absolute';
+                stats.domElement.style.top = '0px';
+                stats.domElement.style.right = '0px';
+                stats.domElement.style.zIndex = 100;
+                container.appendChild( stats.domElement );
+
+                initCannon();
+
+
+                $( "start" ).addEventListener( 'click', onStartClick, false );
+                //onStartClick();
+
+                var callbackProgress = function( progress, result ) {
+
+                    var bar = 250,
+                        total = progress.total_models + progress.total_textures,
+                        loaded = progress.loaded_models + progress.loaded_textures;
+
+                    if ( total )
+                        bar = Math.floor( bar * loaded / total );
+
+                    $( "bar" ).style.width = bar + "px";
+
+                    count = 0;
+                    for ( var m in result.materials ) count++;
+
+                    handle_update( result, Math.floor( count/total ) );
+
+                }
+
+                var callbackFinished = function( result ) {
+
+                    console.log(result.scene)
+
+                    //yes this works!!
+
+                var material = new THREE.MeshLambertMaterial( { color: 0xdddddd, wireframe: true } );
+                    for (var i in result.scene.__objects)
+                    {
+                        obj = result.scene.__objects[i]
+                        // console.log(obj)
+                        if (obj.name.slice(0,4) == 'Cube')
+                        {
+                            console.log(obj.name)
+                            obj.castShadow = true;
+                            obj.receiveShadow = true;
+                            obj.useQuaternion = true;
+                            obj.position.y = obj.position.y + 0.0;
+
+
+                            var halfExtents = new CANNON.Vec3(obj.scale.x ,obj.scale.y , obj.scale.z );
+                            var boxShape = new CANNON.Box(halfExtents);
+                            var boxBody = new CANNON.RigidBody(0,boxShape);
+
+                            var halfExtents = new CANNON.Vec3(1,1,1);
+                            var boxShape = new CANNON.Box(halfExtents);
+                            var boxGeometry = new THREE.CubeGeometry(halfExtents.x*2,halfExtents.y*2,halfExtents.z*2);
+
+
+                            // boxBody.quaternion.copy(obj.quaternion);  //broken???
+                            boxBody.quaternion.x = obj.quaternion.x;
+                            boxBody.quaternion.y = obj.quaternion.y;
+                            boxBody.quaternion.z = obj.quaternion.z;
+                            boxBody.quaternion.w = obj.quaternion.w;
+
+                            // boxBody.position.y = boxBody.position.y + 2.0;
+
+                            // boxBody.position.copy(obj.position); //broken???
+                            boxBody.position.x = obj.position.x;
+                            boxBody.position.y = obj.position.y;
+                            boxBody.position.z = obj.position.z;
+
+                            blenderBoxes.push(boxBody);
+                            world.add(boxBody)
+
+                            // to see the collision meshes with y += 2,
+                            // uncomment the following lines
+
+                            /*
+                            var boxGeometry = new THREE.CubeGeometry(2,2,2);
+                            var boxMesh = new THREE.Mesh( boxGeometry, material );
+
+                            boxMesh.position.copy(obj.position);
+                            boxMesh.scale.copy(obj.scale);
+                            boxMesh.quaternion.copy(obj.quaternion);
+                            boxMesh.rotation.copy(obj.rotation); // not neeeded actually
+
+                            boxMesh.name = obj.name + ' coll';
+                            boxMesh.position.y = boxMesh.position.y + 2.0;  // offset
+                            boxMesh.castShadow = true;
+                            boxMesh.receiveShadow = true;
+                            boxMesh.useQuaternion = true;
+
+                            blenderBoxMeshes.push(boxMesh);
+                            result.scene.add(boxMesh)
+                            */
+                            
+
+
+                        }
+
+
+
+                    }
+                    
+
+                    // var scale = new THREE.Vector3(1,2,1);
+                    // THREE.GeometryUtils.scale(result.scene, scale);
+
+
+                    loaded = result;
+
+                    $( "message" ).style.display = "none";
+                    $( "progressbar" ).style.display = "none";
+                    $( "start" ).style.display = "block";
+                    $( "start" ).className = "enabled";
+
+                    handle_update( result, 1 );
+
+
+                }
+
+                $( "progress" ).style.display = "block";
+
+                var loader = new THREE.SceneLoader();
+                loader.callbackProgress = callbackProgress;
+
+                loader.load( "a6.js", callbackFinished );
+
+                $( "plus_exp" ).addEventListener( 'click', createToggle( "exp" ), false );
+
+                //
+
+                window.addEventListener( 'resize', onWindowResize, false );
+
+            }
+
+            function onWindowResize() {
+
+                windowHalfX = window.innerWidth / 2;
+                windowHalfY = window.innerHeight / 2;
+
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+
+                renderer.setSize( window.innerWidth, window.innerHeight );
+
+            }
+
+            function setButtonActive( id ) {
+
+                $( "start" ).style.backgroundColor = "green";
+
+            }
+
+            function onStartClick() {
+
+                $( "progress" ).style.display = "none";
+
+                blocker.style.display = '-webkit-box';
+                blocker.style.display = '-moz-box';
+                blocker.style.display = 'box';
+
+                instructions.style.display = '';
+
+
+                // camera = loaded.currentCamera;
+
+                // renderer = new THREE.WebGLRenderer();
+
+
+                camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.1, 1000 );
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+
+                scene = loaded.scene;
+
+                // scene = new THREE.Scene();
+                scene.fog = new THREE.Fog( 0x222233, 0, 500 );
+
+                controls = new PointerLockControls( camera , sphereBody );
+                scene.add( controls.getObject() );
+
+
+                geometry = new THREE.PlaneGeometry( 300, 300, 50, 50 );
+                geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+
+                material = new THREE.MeshLambertMaterial( { color: 0x4444dd, wireframe: false } );
+                
+                THREE.ColorUtils.adjustHSV( material.color, 0, 0, 0.9 );
+                mesh = new THREE.Mesh( geometry, material );
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add( mesh );
+                /*
+                */
+
+                
+                light = new THREE.SpotLight( 0xffeeee );
+                light.position.set( 10, 30, 20 );
+                light.target.position.set( 0, 0, 0 );
+                light.castShadow = true;
+
+                light.shadowCameraNear = 20;
+                light.shadowCameraFar = 50;//camera.far;
+                light.shadowCameraFov = 40;
+
+                light.shadowMapBias = 0.1;
+                light.shadowMapDarkness = 0.7;
+                light.shadowMapWidth = 2*512;
+                light.shadowMapHeight = 2*512;
+                scene.add( light );
+                
+
+                var ambient = new THREE.AmbientLight( 0x222233, 1.25 );
+                // var ambient = new THREE.AmbientLight( 0x555555, 1.25 );
+                //scene.add( ambient );
+
+
+                // Add boxes
+                material = new THREE.MeshLambertMaterial( { color: 0x5555dd, wireframe: false } );
+                var halfExtents = new CANNON.Vec3(1,1,1);
+                var boxShape = new CANNON.Box(halfExtents);
+                var boxGeometry = new THREE.CubeGeometry(halfExtents.x*2,halfExtents.y*2,halfExtents.z*2);
+                for(var i=0; i < 20; i++){
+                    var x = (Math.random()-0.5)*20;
+                    var y = (Math.random())*80;
+                    var z = (Math.random()-0.5)*20;
+                    var boxBody = new CANNON.RigidBody(1,boxShape);
+                    var boxMesh = new THREE.Mesh( boxGeometry, material );
+                    world.add(boxBody);
+                    scene.add(boxMesh);
+                    boxBody.position.set(x,y,z);
+                    boxMesh.position.set(x,y,z);
+                    boxMesh.castShadow = true;
+                    boxMesh.receiveShadow = true;
+                    boxMesh.useQuaternion = true;
+                    boxes.push(boxBody);
+                    boxMeshes.push(boxMesh);
+                }
+
+
+                renderer.shadowMapEnabled = true;
+                renderer.shadowMapSoft = true;
+                renderer.setClearColor( loaded.bgColor, loaded.bgAlpha );
+
+                initBlenderScene();
+
+                currentScene = 1;
+
+                console.log('333');
+
+            }
+            function initCannon(){
+                // Setup our world
+                world = new CANNON.World();
+                world.quatNormalizeSkip = 0;
+                world.quatNormalizeFast = false;
+                world.solver.setSpookParams(300,10);
+                world.solver.iterations = 5;
+                world.gravity.set(0,-20,0);
+                world.broadphase = new CANNON.NaiveBroadphase();
+
+                // Create a slippery material (friction coefficient = 0.0)
+                physicsMaterial = new CANNON.Material("slipperyMaterial");
+                var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+                                                                        physicsMaterial,
+                                                                        0.0, // friction coefficient
+                                                                        0.3  // restitution
+                                                                        );
+                // We must add the contact materials to the world
+                world.addContactMaterial(physicsContactMaterial);
+
+                // Create a sphere
+                var mass = 5, radius = 1.3;
+                sphereShape = new CANNON.Sphere(radius);
+                sphereBody = new CANNON.RigidBody(mass,sphereShape,physicsMaterial);
+                sphereBody.position.set(0,5,0);
+                sphereBody.linearDamping = 0.05;
+                world.add(sphereBody);
+
+
+
+                // Create a plane
+                var groundShape = new CANNON.Plane();
+                var groundBody = new CANNON.RigidBody(0,groundShape,physicsMaterial);
+                groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
+                world.add(groundBody);
+
+            }
+
+            function onDocumentMouseMove(event) {
+
+                mouseX = ( event.clientX - windowHalfX );
+                mouseY = ( event.clientY - windowHalfY );
+
+            }
+
+            function createLoadScene() {
+
+                var result = {
+
+                    scene:  new THREE.Scene(),
+                    camera: new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 1, 1000 )
+
+                };
+
+                result.camera.position.z = 100;
+
+                var object, geometry, material, light, count = 500, range = 200;
+
+                material = new THREE.MeshLambertMaterial( { color:0xffffff } );
+                geometry = new THREE.CubeGeometry( 5, 5, 5 );
+
+                for( var i = 0; i < count; i++ ) {
+
+                    object = new THREE.Mesh( geometry, material );
+
+                    object.position.x = ( Math.random() - 0.5 ) * range;
+                    object.position.y = ( Math.random() - 0.5 ) * range;
+                    object.position.z = ( Math.random() - 0.5 ) * range;
+
+                    object.rotation.x = Math.random() * 6;
+                    object.rotation.y = Math.random() * 6;
+                    object.rotation.z = Math.random() * 6;
+
+                    object.matrixAutoUpdate = false;
+                    object.updateMatrix();
+
+                    result.scene.add( object );
+
+                }
+
+                result.scene.matrixAutoUpdate = false;
+
+                light = new THREE.PointLight( 0xffffff );
+                result.scene.add( light );
+
+                light = new THREE.DirectionalLight( 0x111111 );
+                light.position.x = 1;
+                result.scene.add( light );
+
+                return result;
+
+            }
+
+
+            function animate() {
+
+                requestAnimationFrame( animate );
+                if (currentScene == 0){
+                    renderLoadScene();
+                    stats.update();
+                }
+
+                if (currentScene == 1){
+                    if(controls.enabled){
+                        world.step(dt);
+                    }
+
+                    controls.update( Date.now() - time );
+                    renderer.render( scene, camera );
+                    time = Date.now();
+                                        // Update box positions
+                                       
+                    for(var i=0; i<boxes.length; i++){
+                        boxes[i].position.copy(boxMeshes[i].position);
+                        boxes[i].quaternion.copy(boxMeshes[i].quaternion);
+                    }
+
+/*                   
+                    for(var i=0; i<blenderBoxes.length; i++){
+                        blenderBoxes[i].position.copy(blenderBoxMeshes[i].position);
+                        blenderBoxes[i].quaternion.copy(blenderBoxMeshes[i].quaternion);
+                    }
+  */              
+                    
+
+                }
+
+                stats.update();
+            }
+
+
+            function renderBlenderScene() {
+
+                renderer.render( scene, camera );
+
+            }
+
+
+            function renderLoadScene() {
+
+                camera.position.x += ( mouseX - camera.position.x ) * .001;
+                camera.position.y += ( - mouseY - camera.position.y ) * .001;
+
+                camera.lookAt( scene.position );
+
+                renderer.render( scene, camera );
+
+            }
+
+            // Scene explorer user interface
+
+            function toggle( id ) {
+
+                var scn = $( "section_" + id ).style,
+                    btn = $( "plus_" + id );
+
+                if ( scn.display == "block" ) {
+
+                    scn.display = "none";
+                    btn.innerHTML = "[+]";
+
+                }
+                else {
+
+                    scn.display = "block";
+                    btn.innerHTML = "[-]";
+
+                }
+
+            }
+
+            function createToggle( label ) { return function() { toggle( label ) } };
+
+            function refreshSceneView( result ) {
+
+                $( "section_exp" ).innerHTML = generateSceneView( result );
+
+                var config = [ "obj", "geo", "mat", "tex", "lit", "cam" ];
+
+                for ( var i = 0; i < config.length; i++ )
+                    $( "plus_" + config[i] ).addEventListener( 'click', createToggle( config[i] ), false );
+
+            }
+
+            function generateSection( label, id, objects ) {
+
+                var html = "";
+
+                html += "<h3><a id='plus_" + id + "' href='#'>[+]</a> " + label + "</h3>";
+                html += "<div id='section_" + id + "' class='part'>";
+
+                for( var o in objects ) {
+
+                    html += o + "<br/>";
+
+                }
+                html += "</div>";
+
+                return html;
+
+            }
+
+            function generateSceneView( result ) {
+
+                var config = [
+                [ "Objects",    "obj", result.objects ],
+                [ "Geometries", "geo", result.geometries ],
+                [ "Materials",  "mat", result.materials ],
+                [ "Textures",   "tex", result.textures ],
+                [ "Lights",     "lit", result.lights ],
+                [ "Cameras",    "cam", result.cameras ]
+                ];
+
+                var html = "";
+
+                for ( var i = 0; i < config.length; i++ )
+                    html += generateSection( config[i][0], config[i][1], config[i][2] );
+
+                return html;
+
+            }
+
+        </script>
+
+    </body>
+</html>
