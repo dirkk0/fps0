@@ -24,3 +24,4 @@ The imported Blender model is turned into a static model by adding the boxes as 
 
 ![Screenshot](http://dirkk0.github.com/fps0/images/scene.png)
 
+Important: to try it locally you still must run it from a web server (for example 'python -m SimpleHTTPServer') due to cross-origin security issues.
